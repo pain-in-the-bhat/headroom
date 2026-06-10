@@ -40,7 +40,6 @@ struct PreferencesView: View {
         }
         .frame(width: 420, height: 320)
         .onAppear {
-            loadExistingCredentials()
             refreshInterval = service.refreshInterval
             selectedStrategy = service.strategy
         }
@@ -99,6 +98,11 @@ struct PreferencesView: View {
 
             // Action buttons
             HStack {
+                Button("Load Saved") {
+                    loadSavedCredentials()
+                }
+                .disabled(isTesting)
+
                 Button("Test Connection") {
                     testConnection()
                 }
@@ -195,12 +199,22 @@ struct PreferencesView: View {
 
     // MARK: - Actions
 
-    private func loadExistingCredentials() {
+    private func loadSavedCredentials() {
         Task {
-            if let credentials = try? await keychain.read() {
-                workspaceId = credentials.workspaceId
-                authCookie = credentials.authCookie
-                apiKey = credentials.apiKey ?? ""
+            do {
+                if let credentials = try await keychain.read() {
+                    workspaceId = credentials.workspaceId
+                    authCookie = credentials.authCookie
+                    apiKey = credentials.apiKey ?? ""
+                    statusMessage = "Credentials loaded from Keychain."
+                    statusIsError = false
+                } else {
+                    statusMessage = "No saved credentials found."
+                    statusIsError = false
+                }
+            } catch {
+                statusMessage = "Keychain access denied. Grant permission in System Settings → Privacy → Keychain."
+                statusIsError = true
             }
         }
     }

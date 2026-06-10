@@ -42,7 +42,6 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
         win.center()
         win.delegate = self
         win.isReleasedWhenClosed = false
-        win.level = .floating
 
         self.window = win
         self.hostingView = hosting
