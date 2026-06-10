@@ -34,6 +34,12 @@ One number. Your rolling (5h) window — the one that changes your next hour. Gr
    - **Chrome:** DevTools (F12) → Application → Storage → Cookies → `opencode.ai` → copy `auth`
 4. **Click Save.** Polling starts immediately. Credentials stored at `~/.config/headroom/config.json`.
 
+## Download
+
+Grab the latest `headroom.zip` from [Releases](https://github.com/pain-in-the-bhat/headroom/releases), unzip, and move `headroom.app` to `/Applications`.
+
+**First launch:** macOS Gatekeeper will block it since the app isn't signed with an Apple Developer ID. Right-click the app → **Open** (or run `xattr -cr headroom.app` in Terminal). You only need to do this once.
+
 ## Build
 
 ```bash
