@@ -1,0 +1,23 @@
+# Swift
+.build/
+*.o
+*.d
+*.dSYM/
+DerivedData/
+
+# Xcode
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+IDEWorkspaceChecks.plist
+
+# SwiftPM generated
+.swiftpm/
+
+# App bundle
+build/
+
+# macOS
+.DS_Store
+Thumbs.db
