@@ -2,15 +2,14 @@ import SwiftUI
 
 /// headroom — macOS menu bar app for OpenCode Go quota.
 ///
-/// Shows remaining quota in your menu bar: `OC 62|41|18`
+/// Shows used quota in your menu bar: `7|2|18`
+/// (rolling | weekly | monthly — lower is better)
 @main
 struct HeadroomApp: App {
 
     @State private var service = QuotaPollingService()
 
     init() {
-        // Required for a menu bar app: tells macOS this is a background app
-        // (no Dock icon) and that it should handle activation properly.
         NSApplication.shared.setActivationPolicy(.accessory)
     }
 
@@ -26,25 +25,23 @@ struct HeadroomApp: App {
 
 // MARK: - Status Bar Label
 
-/// The dynamic status bar label: "OC 62|41|18"
+/// Raw numbers in the menu bar: `7|2|18` (rolling | weekly | monthly used %)
 struct StatusBarLabel: View {
     @ObservedObject var service: QuotaPollingService
 
     var body: some View {
-        HStack(spacing: 2) {
-            Text("OC")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundColor(.secondary)
-
-            statusText
-        }
+        statusText
     }
 
     @ViewBuilder
     private var statusText: some View {
         switch service.state {
         case .loaded(let usage):
-            statusLabel(for: usage)
+            let rolling  = usage.rolling.map  { "\(Int($0.usagePercent))" } ?? "?"
+            let weekly   = usage.weekly.map   { "\(Int($0.usagePercent))" } ?? "?"
+            let monthly  = usage.monthly.map  { "\(Int($0.usagePercent))" } ?? "?"
+            Text("\(rolling)|\(weekly)|\(monthly)")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
         case .loading:
             Text("...")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -56,14 +53,5 @@ struct StatusBarLabel: View {
             Text("--")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
         }
-    }
-
-    private func statusLabel(for usage: QuotaUsage) -> Text {
-        let rolling = usage.rolling.map { "\(Int($0.remainingPercent))" } ?? "?"
-        let weekly = usage.weekly.map { "\(Int($0.remainingPercent))" } ?? "?"
-        let monthly = usage.monthly.map { "\(Int($0.remainingPercent))" } ?? "?"
-        let text = "\(rolling)|\(weekly)|\(monthly)"
-        return Text(text)
-            .font(.system(size: 11, weight: .medium, design: .monospaced))
     }
 }

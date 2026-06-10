@@ -138,22 +138,33 @@ struct MenuBarView: View {
                         .font(.caption2).fontWeight(.bold)
                         .foregroundColor(.white)
                         .padding(.horizontal, 5).padding(.vertical, 2)
-                        .background(remainingColor(window.remainingPercent))
+                        .background(usageColor(window.usagePercent))
                         .cornerRadius(4)
                     Text(type.displayName)
                         .font(.subheadline).fontWeight(.medium)
                 }
                 Spacer()
-                Text("\(Int(window.remainingPercent))%")
-                    .font(.subheadline).fontWeight(.semibold)
-                    .foregroundColor(remainingColor(window.remainingPercent))
+                // Show used% as primary, remaining as secondary
+                HStack(spacing: 4) {
+                    Text("\(Int(window.usagePercent))%")
+                        .font(.subheadline).fontWeight(.semibold)
+                        .foregroundColor(usageColor(window.usagePercent))
+                    Text("used")
+                        .font(.caption2).foregroundColor(.secondary)
+                }
             }
 
-            ProgressView(value: window.remainingPercent / 100)
-                .tint(remainingColor(window.remainingPercent))
+            ProgressView(value: window.usagePercent / 100)
+                .tint(usageColor(window.usagePercent))
 
-            Text("Resets in: \(DurationFormatter.verbose(seconds: window.resetInSeconds))")
-                .font(.caption).foregroundColor(.secondary)
+            HStack {
+                Text("\(Int(window.remainingPercent))% remaining")
+                    .font(.caption).foregroundColor(.secondary)
+                Text("·")
+                    .font(.caption).foregroundColor(.secondary)
+                Text("Resets in: \(DurationFormatter.verbose(seconds: window.resetInSeconds))")
+                    .font(.caption).foregroundColor(.secondary)
+            }
         }
     }
 
@@ -217,8 +228,9 @@ struct MenuBarView: View {
         preferencesController.store(controller)
     }
 
-    private func remainingColor(_ percent: Double) -> Color {
-        if percent < 10 { .red } else if percent < 30 { .orange } else { .green }
+    private func usageColor(_ percent: Double) -> Color {
+        // Small used% = green (calm), high used% = red (alarm)
+        if percent < 30 { .green } else if percent < 70 { .orange } else { .red }
     }
 }
 
