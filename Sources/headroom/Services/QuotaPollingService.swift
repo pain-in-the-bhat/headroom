@@ -76,7 +76,7 @@ public final class QuotaPollingService: ObservableObject {
 
     /// Configure using stored credentials (from config file).
     /// - Returns: Whether credentials were found and loaded.
-    public func configureFromKeychain() async -> Bool {
+    public func configureFromStore() async -> Bool {
         guard let credentials = try? await store.read() else {
             return false
         }

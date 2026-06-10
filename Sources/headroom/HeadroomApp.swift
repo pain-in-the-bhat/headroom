@@ -7,10 +7,20 @@ import SwiftUI
 @main
 struct HeadroomApp: App {
 
-    @State private var service = QuotaPollingService()
+    @State private var service: QuotaPollingService
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
+
+        let svc = QuotaPollingService()
+        _service = State(initialValue: svc)
+
+        // Auto-load saved credentials on launch
+        Task { @MainActor in
+            if await svc.configureFromStore() {
+                svc.startPolling()
+            }
+        }
     }
 
     var body: some Scene {

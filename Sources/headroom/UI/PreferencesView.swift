@@ -182,7 +182,7 @@ struct PreferencesView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Monitors OpenCode Go subscription quota", systemImage: "1.circle")
                 Label("Rolling (5h), Weekly, Monthly windows", systemImage: "2.circle")
-                Label("Secure credential storage in Keychain", systemImage: "3.circle")
+                Label("Credential storage in ~/.config/headroom/", systemImage: "3.circle")
             }
             .font(.caption)
             .foregroundColor(.secondary)
