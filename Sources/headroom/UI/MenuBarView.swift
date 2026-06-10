@@ -1,18 +1,13 @@
 import SwiftUI
 import AppKit
 
-/// Dropdown menu content for headroom — read-only display + action buttons.
+/// Dropdown panel for headroom — fuel-gauge aesthetic.
 ///
-/// The Preferences sheet has been replaced with a standalone NSWindow
-/// because MenuBarExtra popovers can't host sheets (they're transient
-/// accessory panels, not full windows).
+/// Compact readout panel, not a traditional menu. Thin horizontal
+/// runway bars, minimal chrome, text-only actions.
 struct MenuBarView: View {
 
     @ObservedObject var service: QuotaPollingService
-
-    public init(service: QuotaPollingService) {
-        self.service = service
-    }
 
     private let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -20,21 +15,21 @@ struct MenuBarView: View {
         return f
     }()
 
+    public init(service: QuotaPollingService) {
+        self.service = service
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(spacing: 0) {
             headerView
-            Divider()
-
+            Divider().opacity(0.3)
             contentView
-                .padding(.horizontal, 12)
-
-            Divider()
-
+                .padding(.horizontal, 14)
+            Divider().opacity(0.3)
             footerView
         }
         .frame(width: 260)
         .onAppear {
-            // Activate the app so the popover gets mouse/keyboard focus
             NSApp.activate(ignoringOtherApps: true)
         }
     }
@@ -42,22 +37,19 @@ struct MenuBarView: View {
     // MARK: - Header
 
     private var headerView: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "chart.bar.fill")
-                .foregroundColor(.accentColor)
-            Text("headroom")
-                .font(.headline)
-                .fontWeight(.semibold)
+        HStack {
+            Text("hr")
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundColor(.secondary)
+                .tracking(1)
+
             Spacer()
 
             if service.isStale, service.currentUsage != nil {
-                HStack(spacing: 3) {
-                    Circle().fill(.orange).frame(width: 6, height: 6)
-                    Text("stale").font(.caption2).foregroundColor(.orange)
-                }
+                Circle().fill(.orange).frame(width: 5, height: 5)
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .padding(.vertical, 8)
     }
 
@@ -67,33 +59,27 @@ struct MenuBarView: View {
     private var contentView: some View {
         switch service.state {
         case .initial:
-            initialView
+            emptyView
         case .loading:
             loadingView
         case .loaded(let usage):
-            quotaDetailView(usage: usage)
+            quotaView(usage: usage)
         case .failed(let error):
             errorView(error: error)
         }
     }
 
-    private var initialView: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "gearshape")
-                .font(.title2)
+    private var emptyView: some View {
+        VStack(spacing: 8) {
+            Text("Not configured")
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.secondary)
-                .padding(.top, 10)
+                .padding(.top, 14)
 
-            Text("Not Configured")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            Text("Set workspace ID and auth cookie\nin Preferences to start.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(2)
-                .padding(.bottom, 10)
+            Text("Open Preferences to set up.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary.opacity(0.6))
+                .padding(.bottom, 14)
         }
         .frame(maxWidth: .infinity)
     }
@@ -101,89 +87,111 @@ struct MenuBarView: View {
     private var loadingView: some View {
         HStack {
             Spacer()
-            VStack(spacing: 6) {
-                ProgressView().scaleEffect(0.8)
-                Text("Fetching...").font(.caption).foregroundColor(.secondary)
-            }
-            .padding(.vertical, 16)
+            ProgressView()
+                .scaleEffect(0.7)
+                .padding(.vertical, 20)
             Spacer()
         }
     }
 
     @ViewBuilder
-    private func quotaDetailView(usage: QuotaUsage) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let r = usage.rolling { windowRow(type: .rolling, window: r) }
-            if let w = usage.weekly { windowRow(type: .weekly, window: w) }
-            if let m = usage.monthly { windowRow(type: .monthly, window: m) }
+    private func quotaView(usage: QuotaUsage) -> some View {
+        VStack(spacing: 14) {
+            if let r = usage.rolling { runwayRow(type: .rolling, window: r) }
+            if let w = usage.weekly  { runwayRow(type: .weekly,  window: w) }
+            if let m = usage.monthly { runwayRow(type: .monthly, window: m) }
 
-            HStack {
-                Spacer()
-                if let lastFetch = service.lastFetchTime {
-                    Text("Updated: \(lastFetch, formatter: timeFormatter)")
-                        .font(.caption2).foregroundColor(.secondary)
+            // Timestamp
+            if let lastFetch = service.lastFetchTime {
+                HStack {
+                    Spacer()
+                    Text("updated \(lastFetch, formatter: timeFormatter)")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.5))
                 }
             }
-            .padding(.top, 2)
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
     }
+
+    // MARK: - Runway Row
 
     @ViewBuilder
-    private func windowRow(type: QuotaWindowType, window: QuotaWindow) -> some View {
+    private func runwayRow(type: QuotaWindowType, window: QuotaWindow) -> some View {
+        let c = color(for: window.usagePercent)
+
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                HStack(spacing: 6) {
-                    Text(type.shortLabel)
-                        .font(.caption2).fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 5).padding(.vertical, 2)
-                        .background(usageColor(window.usagePercent))
-                        .cornerRadius(4)
-                    Text(type.displayName)
-                        .font(.subheadline).fontWeight(.medium)
-                }
+            // Label + used%
+            HStack(alignment: .firstTextBaseline) {
+                Text(type.displayName)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.primary.opacity(0.8))
+
                 Spacer()
-                // Show used% as primary, remaining as secondary
-                HStack(spacing: 4) {
-                    Text("\(Int(window.usagePercent))%")
-                        .font(.subheadline).fontWeight(.semibold)
-                        .foregroundColor(usageColor(window.usagePercent))
-                    Text("used")
-                        .font(.caption2).foregroundColor(.secondary)
+
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text("\(Int(window.usagePercent))")
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .foregroundColor(c)
+                    Text("%")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(c.opacity(0.6))
+                        .padding(.leading, 1)
                 }
             }
 
-            ProgressView(value: window.usagePercent / 100)
-                .tint(usageColor(window.usagePercent))
+            // Runway bar — 4px tall, rounded, left-to-right fill
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    // Track
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(c.opacity(0.12))
+                        .frame(height: 4)
 
+                    // Fill
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(c)
+                        .frame(width: max(4, geo.size.width * window.usagePercent / 100), height: 4)
+                        .animation(.easeInOut(duration: 0.6), value: window.usagePercent)
+                }
+            }
+            .frame(height: 4)
+
+            // Reset timer
             HStack {
                 Text("\(Int(window.remainingPercent))% remaining")
-                    .font(.caption).foregroundColor(.secondary)
-                Text("·")
-                    .font(.caption).foregroundColor(.secondary)
-                Text("Resets in: \(DurationFormatter.verbose(seconds: window.resetInSeconds))")
-                    .font(.caption).foregroundColor(.secondary)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.7))
+
+                Text("· resets \(DurationFormatter.verbose(seconds: window.resetInSeconds))")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.5))
             }
         }
     }
+
+    // MARK: - Error
 
     @ViewBuilder
     private func errorView(error: QuotaError) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: error.isAuthError ? "key.slash.fill" : "exclamationmark.triangle.fill")
-                .font(.title2)
+            Text(error.isAuthError ? "Auth error" : "Error")
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(error.isAuthError ? .orange : .red)
-                .padding(.top, 8)
-
-            Text(error.isAuthError ? "Auth Error" : "Error")
-                .font(.subheadline).fontWeight(.semibold)
-                .foregroundColor(error.isAuthError ? .orange : .red)
+                .padding(.top, 12)
 
             Text(error.message)
-                .font(.caption).foregroundColor(.secondary)
-                .multilineTextAlignment(.center).lineLimit(4)
-                .padding(.bottom, 8)
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .padding(.bottom, 12)
+
+            Button("Reconfigure") {
+                showPreferences()
+            }
+            .font(.system(size: 11))
+            .padding(.bottom, 8)
         }
         .frame(maxWidth: .infinity)
     }
@@ -192,83 +200,54 @@ struct MenuBarView: View {
 
     private var footerView: some View {
         VStack(spacing: 0) {
-            MenuBarButton(icon: "arrow.clockwise", title: "Refresh",
-                          disabled: service.isFetching) {
-                Task { await service.fetchNow() }
+            HStack(spacing: 0) {
+                actionButton("Refresh") { Task { await service.fetchNow() } }
+                    .disabled(service.isFetching)
+                Text("·").font(.system(size: 10)).foregroundColor(.secondary.opacity(0.3)).padding(.horizontal, 4)
+                actionButton("Dashboard") {
+                    NSWorkspace.shared.open(URL(string: "https://opencode.ai")!)
+                }
+                Spacer()
+                actionButton("Prefs") { showPreferences() }
+                Text("·").font(.system(size: 10)).foregroundColor(.secondary.opacity(0.3)).padding(.horizontal, 4)
+                actionButton("Quit") { NSApplication.shared.terminate(nil) }
+                    .foregroundColor(.red.opacity(0.7))
             }
-            .disabled(service.isFetching)
-
-            MenuBarButton(icon: "globe", title: "Open Dashboard") {
-                NSWorkspace.shared.open(URL(string: "https://opencode.ai")!)
-            }
-
-            Divider()
-
-            MenuBarButton(icon: "gearshape", title: "Preferences...") {
-                showPreferences()
-            }
-
-            Divider()
-
-            MenuBarButton(icon: "power", title: "Quit headroom",
-                          isDestructive: true) {
-                NSApplication.shared.terminate(nil)
-            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
         }
     }
 
     // MARK: - Helpers
+
+    private func actionButton(_ label: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+        }
+        .buttonStyle(.plain)
+        .opacity(0.6)
+    }
 
     private var preferencesController = PreferencesWindowControllerRef()
 
     private func showPreferences() {
         let controller = PreferencesWindowController(service: service)
         controller.show()
-        // Keep a reference so the window isn't deallocated
         preferencesController.store(controller)
     }
 
-    private func usageColor(_ percent: Double) -> Color {
-        // Small used% = green (calm), high used% = red (alarm)
-        if percent < 30 { .green } else if percent < 70 { .orange } else { .red }
+    private func color(for percent: Double) -> Color {
+        if percent < 30 { .green }
+        else if percent < 70 { .orange }
+        else { .red }
     }
 }
 
 // MARK: - Reference Holder
 
-/// Holds a strong reference to the PreferencesWindowController so it
-/// stays alive after the function scope exits.
+/// Holds a strong reference to PreferencesWindowController.
 final class PreferencesWindowControllerRef {
     private var controller: PreferencesWindowController?
-
-    func store(_ c: PreferencesWindowController) {
-        controller = c
-    }
-}
-
-// MARK: - Menu Bar Button
-
-struct MenuBarButton: View {
-    let icon: String
-    let title: String
-    var disabled = false
-    var isDestructive = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon).frame(width: 16)
-                Text(title)
-                Spacer()
-            }
-            .contentShape(Rectangle())
-            .foregroundColor(isDestructive ? .red : .primary)
-        }
-        .buttonStyle(.plain)
-        .disabled(disabled)
-        .opacity(disabled ? 0.5 : 1)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-    }
+    func store(_ c: PreferencesWindowController) { controller = c }
 }

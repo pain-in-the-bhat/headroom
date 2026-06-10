@@ -1,21 +1,20 @@
 # headroom
 
-A native macOS menu bar app that shows OpenCode Go quota at a glance. How much room you have left before rate limits hit.
+macOS menu bar app for OpenCode Go quota. Glance at your menu bar, know exactly how much runway you have left.
 
 ```
-OC 62|41|18
+7|2|18
 ```
 
-Rolling (5h) | Weekly | Monthly — remaining percentages, updated every 60 seconds.
+Rolling (5h) | Weekly | Monthly — used %, lower is better. Matches the OpenCode dashboard.
 
 ## Features
 
-- **Menu bar display:** Compact `OC 62|41|18` showing remaining quota for all three windows
-- **Detailed dropdown:** Progress bars, reset timers, and status indicators
-- **Auto-refresh:** Polls every 60 seconds with exponential backoff on errors
-- **Secure storage:** Credentials stored in macOS Keychain
-- **Error handling:** Clear auth errors, network failures, and stale data indicators
-- **Extensible:** Provider abstraction allows swapping between scraping and API (future)
+- **Menu bar:** Colored `7|2|18` — each number independent (green/amber/red based on usage)
+- **Dropdown panel:** Thin runway bars, reset timers, compact text-only actions
+- **Auto-refresh:** 60s polling with exponential backoff on errors
+- **Secure:** Credentials in macOS Keychain, never plaintext
+- **Extensible:** Provider abstraction — scraping today, API when PR #16513 ships
 
 ## Requirements
 
@@ -24,24 +23,39 @@ Rolling (5h) | Weekly | Monthly — remaining percentages, updated every 60 seco
 
 ## Setup
 
-1. **Open Preferences** from the menu bar dropdown (or launch the app)
-2. **Enter your Workspace ID:**
-   - Visit `https://opencode.ai/workspace/` in your browser
-   - Navigate to your Go workspace
-   - Copy the workspace ID from the URL: `https://opencode.ai/workspace/{workspaceId}/go`
-3. **Enter your Auth Cookie:**
-   - Open browser DevTools (F12) on `opencode.ai`
-   - Go to Application → Storage → Cookies
-   - Find the `auth` cookie and copy its value
-4. **Click Save** — the app will immediately start polling
+1. **Open Preferences** from the menu bar dropdown
+2. **Workspace ID:** Visit `opencode.ai`, open your workspace → Go. Copy the ID from the URL: `https://opencode.ai/workspace/{id}/go`
+3. **Auth Cookie:**
+   - **Safari:** Preferences → Advanced → "Show Develop menu" → Develop → Show Web Inspector → Storage tab → Cookies → `opencode.ai` → copy the `auth` cookie value
+   - **Chrome:** DevTools (F12) → Application → Storage → Cookies → `opencode.ai` → copy `auth`
+4. **Click Save** — polling starts immediately
 
 ## Usage
 
-- The menu bar shows `OC 62|41|18` — remaining percentage for Rolling, Weekly, Monthly
-- Click to open the dropdown with detailed progress bars and reset timers
-- Use **Refresh** to force an immediate update
-- Use **Open Dashboard** to open opencode.ai in your browser
-- Use **Preferences** to update credentials or change settings
+- Menu bar shows used %: small numbers = calm, red numbers = act
+- Hover for window labels (Rolling / Weekly / Monthly)
+- Click for the detail panel with runway bars and reset timers
+- **Refresh** forces an immediate fetch
+- **Open Dashboard** opens opencode.ai in your browser
+
+## Build
+
+```bash
+# Build and package as .app
+./bundle.sh && open build/headroom.app
+
+# Or open in Xcode
+open Package.swift
+# Then ⌘R to build and run
+```
+
+## Test
+
+```bash
+swift test
+```
+
+25 tests covering HTML scraping, mock data generation, duration formatting, and error types.
 
 ## Architecture
 
@@ -49,95 +63,58 @@ Rolling (5h) | Weekly | Monthly — remaining percentages, updated every 60 seco
 headroom/
 ├── Sources/
 │   └── headroom/
-│       ├── HeadroomApp.swift             # @main entry point + StatusBarLabel
+│       ├── HeadroomApp.swift              # @main + StatusBarLabel
 │       ├── Models/
-│       │   ├── QuotaUsage.swift        # Core data models
-│       │   └── QuotaWindowType.swift   # Window type enums
+│       │   ├── QuotaUsage.swift           # Core data types
+│       │   └── QuotaWindowType.swift      # Window enums
 │       ├── Providers/
-│       │   ├── QuotaFetcher.swift       # Provider protocol + credentials
-│       │   ├── MockQuotaFetcher.swift   # Mock data for testing
-│       │   ├── ScrapingQuotaFetcher.swift  # Dashboard scraping
-│       │   └── APIQuotaFetcher.swift   # Future API-based fetcher
+│       │   ├── QuotaFetcher.swift          # Provider protocol
+│       │   ├── ScrapingQuotaFetcher.swift  # Dashboard scraping (current)
+│       │   ├── APIQuotaFetcher.swift       # API-based (future)
+│       │   └── MockQuotaFetcher.swift      # Testing
 │       ├── Services/
-│       │   ├── DashboardScraper.swift  # HTML parsing logic
-│       │   ├── KeychainController.swift # Secure credential storage
-│       │   └── QuotaPollingService.swift # Timer + state management
+│       │   ├── DashboardScraper.swift     # SolidJS SSR parser
+│       │   ├── KeychainController.swift   # Credential storage
+│       │   └── QuotaPollingService.swift   # Timer + state
 │       ├── UI/
-│       │   ├── MenuBarView.swift       # Menu bar dropdown
-│       │   └── PreferencesView.swift   # Settings screen
+│       │   ├── MenuBarView.swift          # Dropdown panel
+│       │   ├── PreferencesView.swift      # Settings
+│       │   └── PreferencesWindowController.swift  # Standalone NSWindow
 │       └── Utilities/
-│           └── DurationFormatter.swift  # Time formatting
+│           └── DurationFormatter.swift     # Time formatting
 ├── Tests/
 │   └── headroomTests/
 │       ├── DashboardScraperTests.swift
-│       ├── MockQuotaFetcherTests.swift
 │       ├── DurationFormatterTests.swift
+│       ├── MockQuotaFetcherTests.swift
 │       └── QuotaErrorTests.swift
+├── bundle.sh                              # Build + sign .app
+├── headroom.entitlements
 └── TECHNICAL_DESIGN.md
 ```
 
 ### Data Source
 
-The app currently scrapes the OpenCode Go dashboard at `https://opencode.ai/workspace/{id}/go` using the auth cookie. This is the same approach used by all existing third-party tools (slkiser/opencode-quota, pi-go-bars, opencode-go-usage).
-
-The dashboard is a SolidJS application with SSR. Quota data is embedded in the HTML as hydration output:
+Scrapes the OpenCode Go dashboard at `https://opencode.ai/workspace/{id}/go` using the auth cookie. Parses SolidJS SSR hydration output:
 
 ```
-rollingUsage:$R[123]={usagePercent:42,resetInSec:7920}
+rollingUsage:$R[123]={usagePercent:7,resetInSec:7920}
 ```
 
-An official API endpoint at `GET /zen/go/v1/usage` has been proposed in [PR #16513](https://github.com/anomalyco/opencode/pull/16513) but is not yet available. The `APIQuotaFetcher` placeholder is ready to be wired once it ships.
+Same approach used by `slkiser/opencode-quota`, `pi-go-bars`, and `opencode-go-usage`.
 
-### Fetch Strategies
-
-| Strategy | Description | Status |
-|----------|-------------|--------|
-| `scraping` | Dashboard HTML scraping | ✅ Current default |
-| `auto` | Try API first, fall back to scraping | ⏳ Same as scraping for now |
-| `api` | Official API endpoint | 🔜 Ready for PR #16513 |
-| `mock` | Simulated data for testing | ✅ Available in Preferences |
-
-## Development
-
-### Build
-
-```bash
-swift build
-```
-
-### Test
-
-```bash
-swift test
-```
-
-25 unit tests covering:
-- HTML parsing with multiple field orderings
-- Mock data generation and value ranges
-- Duration formatting
-- Error types and fetch results
-
-### Run
-
-```bash
-swift run
-```
-
-Or open in Xcode and run from there.
+The official API endpoint (`GET /zen/go/v1/usage`) is proposed in [PR #16513](https://github.com/anomalyco/opencode/pull/16513). The `APIQuotaFetcher` placeholder is ready once it ships.
 
 ## FAQ
 
-**Q: Is the auth cookie secure?**
-A: Yes. Credentials are stored in the macOS Keychain, not in plain text on disk.
+**Q: Is the auth cookie stored safely?**
+A: Yes. macOS Keychain, not plaintext.
 
 **Q: How often does it refresh?**
-A: Every 60 seconds by default, configurable in Preferences (15s–300s).
+A: 60s default, configurable 15s–300s in Preferences.
 
-**Q: What happens if the dashboard changes?**
-A: The scraper will fail with a clear error message. Update the regex patterns in `DashboardScraper.swift` or switch to the API fetcher once available.
-
-**Q: Can I use the API endpoint instead?**
-A: Not yet. The `/zen/go/v1/usage` endpoint is proposed in PR #16513 but not merged. Track that PR for updates.
+**Q: What if the OpenCode dashboard changes?**
+A: The scraper shows a clear error. Update regex patterns in `DashboardScraper.swift`, or switch to the API fetcher when available.
 
 ## License
 
