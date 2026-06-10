@@ -47,13 +47,13 @@ struct StatusBarLabel: View {
         }
     }
 
-    /// Show only the worst window — the one closest to your limit.
+    /// Show the rolling window — most time-sensitive (5h reset).
+    /// Falls back to weekly, then monthly if rolling isn't available.
     @ViewBuilder
     private func compactNumber(usage: QuotaUsage) -> some View {
-        let windows = [usage.rolling, usage.weekly, usage.monthly].compactMap { $0 }
-        let worst = windows.max(by: { $0.usagePercent < $1.usagePercent })
+        let window = usage.rolling ?? usage.weekly ?? usage.monthly
 
-        if let w = worst {
+        if let w = window {
             Text("\(Int(w.usagePercent))")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundColor(color(for: w.usagePercent))

@@ -13,13 +13,13 @@
 85
 ```
 
-One number. Your most-constrained window. Green when calm, red when you're about to hit a limit. Hover for all three.
+One number. Your rolling (5h) window — the one that changes your next hour. Green when calm, red when you're about to hit a limit. Hover for all three.
 
 ---
 
 ## What you get
 
-- **One number in your menu bar.** Shows the window closest to your limit — the only one that changes your behaviour. Colour-coded (green < 30%, amber 30–70%, red > 70%). Hover for full breakdown.
+- **One number in your menu bar.** Shows your rolling (5h) window — the most time-sensitive limit. Falls back to weekly/monthly if rolling isn't available. Colour-coded (green < 30%, amber 30–70%, red > 70%). Hover for full breakdown.
 - **Dropdown panel:** Thin fuel-gauge bars, reset timers, compact text-only actions.
 - **60s auto-refresh** with exponential backoff on errors.
 - **Standalone Preferences window** — no broken sheets, no hidden Keychain prompts.
