@@ -10,16 +10,16 @@
 <p align="center"><strong>headroom</strong> — OpenCode Go quota in your macOS menu bar.</p>
 
 ```
-7|2|18
+85
 ```
 
-Rolling (5h) | Weekly | Monthly. Used %, colour-coded. Lower is better.
+One number. Your most-constrained window. Green when calm, red when you're about to hit a limit. Hover for all three.
 
 ---
 
 ## What you get
 
-- **Coloured menu bar:** `7` `2` `18` — each number independently green/amber/red based on usage. Glance, don't read.
+- **One number in your menu bar.** Shows the window closest to your limit — the only one that changes your behaviour. Colour-coded (green < 30%, amber 30–70%, red > 70%). Hover for full breakdown.
 - **Dropdown panel:** Thin fuel-gauge bars, reset timers, compact text-only actions.
 - **60s auto-refresh** with exponential backoff on errors.
 - **Standalone Preferences window** — no broken sheets, no hidden Keychain prompts.

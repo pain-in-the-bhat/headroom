@@ -2,8 +2,8 @@ import SwiftUI
 
 /// headroom — macOS menu bar app for OpenCode Go quota.
 ///
-/// Shows used quota in your menu bar: each number colored independently
-/// (green/amber/red based on threshold). Hover for window labels.
+/// Shows the most-constrained window's used% in the menu bar.
+/// One number. Glance, don't read. Hover for all three.
 @main
 struct HeadroomApp: App {
 
@@ -18,7 +18,6 @@ struct HeadroomApp: App {
             MenuBarView(service: service)
         } label: {
             StatusBarLabel(service: service)
-                .help("Rolling (5h) | Weekly | Monthly — used %")
         }
         .menuBarExtraStyle(.window)
     }
@@ -26,15 +25,15 @@ struct HeadroomApp: App {
 
 // MARK: - Status Bar Label
 
-/// Three colored numbers in the menu bar: `7` `2` `18`
-/// Each number colored independently based on its usage threshold.
+/// One number in the menu bar: the highest used% across all windows.
+/// Colour tells you everything. Tooltip shows the full breakdown.
 struct StatusBarLabel: View {
     @ObservedObject var service: QuotaPollingService
 
     var body: some View {
         switch service.state {
         case .loaded(let usage):
-            coloredNumbers(usage: usage)
+            compactNumber(usage: usage)
         case .loading:
             Text("...")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -48,32 +47,29 @@ struct StatusBarLabel: View {
         }
     }
 
+    /// Show only the worst window — the one closest to your limit.
     @ViewBuilder
-    private func coloredNumbers(usage: QuotaUsage) -> some View {
-        HStack(spacing: 0) {
-            numberText(usage.rolling?.usagePercent)
-            separator
-            numberText(usage.weekly?.usagePercent)
-            separator
-            numberText(usage.monthly?.usagePercent)
-        }
-        .font(.system(size: 11, weight: .medium, design: .monospaced))
-    }
+    private func compactNumber(usage: QuotaUsage) -> some View {
+        let windows = [usage.rolling, usage.weekly, usage.monthly].compactMap { $0 }
+        let worst = windows.max(by: { $0.usagePercent < $1.usagePercent })
 
-    @ViewBuilder
-    private func numberText(_ percent: Double?) -> some View {
-        if let p = percent {
-            Text("\(Int(p))")
-                .foregroundColor(color(for: p))
+        if let w = worst {
+            Text("\(Int(w.usagePercent))")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundColor(color(for: w.usagePercent))
+                .help(tooltipText(usage: usage))
         } else {
             Text("?")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundColor(.secondary)
         }
     }
 
-    private var separator: some View {
-        Text("|")
-            .foregroundColor(.secondary.opacity(0.4))
+    private func tooltipText(usage: QuotaUsage) -> String {
+        let r = usage.rolling.map { "R \(Int($0.usagePercent))%" } ?? "R ?"
+        let w = usage.weekly.map  { "W \(Int($0.usagePercent))%" } ?? "W ?"
+        let m = usage.monthly.map { "M \(Int($0.usagePercent))%" } ?? "M ?"
+        return "\(r)  \(w)  \(m)"
     }
 
     private func color(for percent: Double) -> Color {
