@@ -19,7 +19,7 @@ struct PreferencesView: View {
     @State private var statusIsError: Bool = false
     @State private var isTesting = false
 
-    private let keychain = KeychainController()
+    private let store = CredentialStore()
 
     var body: some View {
         TabView {
@@ -202,20 +202,20 @@ struct PreferencesView: View {
     private func loadSavedCredentials() {
         Task {
             do {
-                if let credentials = try await keychain.read() {
+                if let credentials = try await store.read() {
                     workspaceId = credentials.workspaceId
                     authCookie = credentials.authCookie
                     apiKey = credentials.apiKey ?? ""
-                    statusMessage = "Credentials loaded from Keychain."
-                    statusIsError = false
-                } else {
-                    statusMessage = "No saved credentials found."
-                    statusIsError = false
-                }
-            } catch {
-                statusMessage = "Keychain access denied. Grant permission in System Settings → Privacy → Keychain."
-                statusIsError = true
+                statusMessage = "Credentials loaded from config file."
+                statusIsError = false
+            } else {
+                statusMessage = "No saved credentials found."
+                statusIsError = false
             }
+        } catch {
+            statusMessage = "Could not read config: \(error.localizedDescription)"
+            statusIsError = true
+        }
         }
     }
 

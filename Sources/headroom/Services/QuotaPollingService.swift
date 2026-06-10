@@ -45,7 +45,7 @@ public final class QuotaPollingService: ObservableObject {
     // MARK: - Private Properties
 
     private var fetcher: QuotaFetcher?
-    private var keychain: KeychainController
+    private var store: CredentialStore
     private var timer: Timer?
     private var failureCount = 0
     private var isConfigured = false
@@ -56,8 +56,8 @@ public final class QuotaPollingService: ObservableObject {
 
     // MARK: - Initialization
 
-    public init(keychain: KeychainController = KeychainController()) {
-        self.keychain = keychain
+    public init(store: CredentialStore = CredentialStore()) {
+        self.store = store
     }
 
     // MARK: - Public API
@@ -74,13 +74,13 @@ public final class QuotaPollingService: ObservableObject {
         Task { await storeCredentials(credentials, strategy: strategy) }
     }
 
-    /// Configure using stored credentials (from Keychain).
+    /// Configure using stored credentials (from config file).
     /// - Returns: Whether credentials were found and loaded.
     public func configureFromKeychain() async -> Bool {
-        guard let credentials = try? await keychain.read() else {
+        guard let credentials = try? await store.read() else {
             return false
         }
-        let storedStrategy = await keychain.readStrategy()
+        let storedStrategy = await store.readStrategy()
         self.strategy = storedStrategy
         self.fetcher = makeFetcher(credentials: credentials, strategy: storedStrategy)
         self.isConfigured = true
@@ -143,7 +143,7 @@ public final class QuotaPollingService: ObservableObject {
         state = .initial
         lastFetchTime = nil
         failureCount = 0
-        try? await keychain.deleteAll()
+        try? await store.deleteAll()
     }
 
     // MARK: - Private
@@ -184,8 +184,8 @@ public final class QuotaPollingService: ObservableObject {
     }
 
     private func storeCredentials(_ credentials: OpenCodeCredentials, strategy: FetchStrategy) async {
-        try? await keychain.store(credentials: credentials)
-        try? await keychain.store(strategy: strategy)
+        try? await store.store(credentials: credentials)
+        try? await store.store(strategy: strategy)
     }
 }
 

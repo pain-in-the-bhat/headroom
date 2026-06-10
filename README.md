@@ -13,7 +13,7 @@ Rolling (5h) | Weekly | Monthly — used %, lower is better. Matches the OpenCod
 - **Menu bar:** Colored `7|2|18` — each number independent (green/amber/red based on usage)
 - **Dropdown panel:** Thin runway bars, reset timers, compact text-only actions
 - **Auto-refresh:** 60s polling with exponential backoff on errors
-- **Secure:** Credentials in macOS Keychain, never plaintext
+- **Secure:** Credentials in `~/.config/headroom/config.json`, not plaintext Keychain prompts
 - **Extensible:** Provider abstraction — scraping today, API when PR #16513 ships
 
 ## Requirements
@@ -74,7 +74,7 @@ headroom/
 │       │   └── MockQuotaFetcher.swift      # Testing
 │       ├── Services/
 │       │   ├── DashboardScraper.swift     # SolidJS SSR parser
-│       │   ├── KeychainController.swift   # Credential storage
+│       │   ├── CredentialStore.swift      # Config file storage (~/.config/headroom/)
 │       │   └── QuotaPollingService.swift   # Timer + state
 │       ├── UI/
 │       │   ├── MenuBarView.swift          # Dropdown panel
