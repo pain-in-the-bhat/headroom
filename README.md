@@ -1,53 +1,48 @@
-# headroom
+<p align="center">
+  <picture>
+    <source srcset="https://img.shields.io/badge/macOS-14%2B-000000?style=flat-square&logo=apple" media="(prefers-color-scheme: dark)">
+    <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-000000?style=flat-square&logo=apple">
+  </picture>
+  <a href="https://github.com/pain-in-the-bhat/headroom/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/pain-in-the-bhat/headroom/ci.yml?style=flat-square&branch=main&label=CI"></a>
+  <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square"></a>
+</p>
 
-macOS menu bar app for OpenCode Go quota. Glance at your menu bar, know exactly how much runway you have left.
+<p align="center"><strong>headroom</strong> — OpenCode Go quota in your macOS menu bar.</p>
 
 ```
 7|2|18
 ```
 
-Rolling (5h) | Weekly | Monthly — used %, lower is better. Matches the OpenCode dashboard.
+Rolling (5h) | Weekly | Monthly. Used %, colour-coded. Lower is better.
 
-## Features
+---
 
-- **Menu bar:** Colored `7|2|18` — each number independent (green/amber/red based on usage)
-- **Dropdown panel:** Thin runway bars, reset timers, compact text-only actions
-- **Auto-refresh:** 60s polling with exponential backoff on errors
-- **Secure:** Credentials in `~/.config/headroom/config.json`, not plaintext Keychain prompts
-- **Extensible:** Provider abstraction — scraping today, API when PR #16513 ships
+## What you get
 
-## Requirements
+- **Coloured menu bar:** `7` `2` `18` — each number independently green/amber/red based on usage. Glance, don't read.
+- **Dropdown panel:** Thin fuel-gauge bars, reset timers, compact text-only actions.
+- **60s auto-refresh** with exponential backoff on errors.
+- **Standalone Preferences window** — no broken sheets, no hidden Keychain prompts.
+- **Provider abstraction:** Dashboard scraping today, API endpoint when [PR #16513](https://github.com/anomalyco/opencode/pull/16513) ships.
 
-- macOS 14 (Sonoma) or later
-- An active [OpenCode Go](https://opencode.ai/docs/go/) subscription
+## Quick setup
 
-## Setup
-
-1. **Open Preferences** from the menu bar dropdown
-2. **Workspace ID:** Visit `opencode.ai`, open your workspace → Go. Copy the ID from the URL: `https://opencode.ai/workspace/{id}/go`
+1. **Open Preferences** from the menu bar dropdown.
+2. **Workspace ID** — from your workspace URL: `https://opencode.ai/workspace/{id}/go`
 3. **Auth Cookie:**
-   - **Safari:** Preferences → Advanced → "Show Develop menu" → Develop → Show Web Inspector → Storage tab → Cookies → `opencode.ai` → copy the `auth` cookie value
+   - **Safari:** Settings → Advanced → "Show Develop menu" → Develop → Show Web Inspector → Storage → Cookies → `opencode.ai` → copy `auth`
    - **Chrome:** DevTools (F12) → Application → Storage → Cookies → `opencode.ai` → copy `auth`
-4. **Click Save** — polling starts immediately
-
-## Usage
-
-- Menu bar shows used %: small numbers = calm, red numbers = act
-- Hover for window labels (Rolling / Weekly / Monthly)
-- Click for the detail panel with runway bars and reset timers
-- **Refresh** forces an immediate fetch
-- **Open Dashboard** opens opencode.ai in your browser
+4. **Click Save.** Polling starts immediately. Credentials stored at `~/.config/headroom/config.json`.
 
 ## Build
 
 ```bash
-# Build and package as .app
+git clone https://github.com/pain-in-the-bhat/headroom.git
+cd headroom
 ./bundle.sh && open build/headroom.app
-
-# Or open in Xcode
-open Package.swift
-# Then ⌘R to build and run
 ```
+
+Or open `Package.swift` in Xcode and hit ⌘R.
 
 ## Test
 
@@ -57,43 +52,57 @@ swift test
 
 25 tests covering HTML scraping, mock data generation, duration formatting, and error types.
 
+## Configuration
+
+Settings are stored in `~/.config/headroom/config.json`:
+
+```json
+{
+  "workspaceId": "wrk_xxx",
+  "authCookie": "xxx",
+  "fetchStrategy": "scraping"
+}
+```
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `fetchStrategy` | `scraping` | `scraping` (dashboard), `api` (future endpoint), `mock` (testing) |
+| Refresh interval | 60s | Configurable 15–300s in Preferences |
+
 ## Architecture
 
 ```
 headroom/
-├── Sources/
-│   └── headroom/
-│       ├── HeadroomApp.swift              # @main + StatusBarLabel
-│       ├── Models/
-│       │   ├── QuotaUsage.swift           # Core data types
-│       │   └── QuotaWindowType.swift      # Window enums
-│       ├── Providers/
-│       │   ├── QuotaFetcher.swift          # Provider protocol
-│       │   ├── ScrapingQuotaFetcher.swift  # Dashboard scraping (current)
-│       │   ├── APIQuotaFetcher.swift       # API-based (future)
-│       │   └── MockQuotaFetcher.swift      # Testing
-│       ├── Services/
-│       │   ├── DashboardScraper.swift     # SolidJS SSR parser
-│       │   ├── CredentialStore.swift      # Config file storage (~/.config/headroom/)
-│       │   └── QuotaPollingService.swift   # Timer + state
-│       ├── UI/
-│       │   ├── MenuBarView.swift          # Dropdown panel
-│       │   ├── PreferencesView.swift      # Settings
-│       │   └── PreferencesWindowController.swift  # Standalone NSWindow
-│       └── Utilities/
-│           └── DurationFormatter.swift     # Time formatting
-├── Tests/
-│   └── headroomTests/
-│       ├── DashboardScraperTests.swift
-│       ├── DurationFormatterTests.swift
-│       ├── MockQuotaFetcherTests.swift
-│       └── QuotaErrorTests.swift
-├── bundle.sh                              # Build + sign .app
-├── headroom.entitlements
-└── TECHNICAL_DESIGN.md
+├── Sources/headroom/
+│   ├── HeadroomApp.swift              # @main + coloured status bar label
+│   ├── Models/
+│   │   ├── QuotaUsage.swift           # Core data types
+│   │   └── QuotaWindowType.swift      # Rolling/Weekly/Monthly enums
+│   ├── Providers/
+│   │   ├── QuotaFetcher.swift          # Provider protocol
+│   │   ├── ScrapingQuotaFetcher.swift  # Dashboard scraping (current)
+│   │   ├── APIQuotaFetcher.swift       # API-based (PR #16513 — not yet live)
+│   │   └── MockQuotaFetcher.swift      # Testing
+│   ├── Services/
+│   │   ├── DashboardScraper.swift     # SolidJS SSR parser
+│   │   ├── CredentialStore.swift      # ~/.config/headroom/config.json
+│   │   └── QuotaPollingService.swift   # Timer + state management
+│   ├── UI/
+│   │   ├── MenuBarView.swift          # Dropdown panel
+│   │   ├── PreferencesView.swift      # Settings
+│   │   └── PreferencesWindowController.swift  # Standalone NSWindow
+│   └── Utilities/
+│       └── DurationFormatter.swift     # Seconds → human readable
+├── Tests/headroomTests/
+│   ├── DashboardScraperTests.swift
+│   ├── DurationFormatterTests.swift
+│   ├── MockQuotaFetcherTests.swift
+│   └── QuotaErrorTests.swift
+├── bundle.sh                          # Build + sign .app
+└── headroom.entitlements
 ```
 
-### Data Source
+## Data source
 
 Scrapes the OpenCode Go dashboard at `https://opencode.ai/workspace/{id}/go` using the auth cookie. Parses SolidJS SSR hydration output:
 
@@ -101,20 +110,37 @@ Scrapes the OpenCode Go dashboard at `https://opencode.ai/workspace/{id}/go` usi
 rollingUsage:$R[123]={usagePercent:7,resetInSec:7920}
 ```
 
-Same approach used by `slkiser/opencode-quota`, `pi-go-bars`, and `opencode-go-usage`.
+This is the same approach used by `slkiser/opencode-quota`, `pi-go-bars`, and `opencode-go-usage`.
 
-The official API endpoint (`GET /zen/go/v1/usage`) is proposed in [PR #16513](https://github.com/anomalyco/opencode/pull/16513). The `APIQuotaFetcher` placeholder is ready once it ships.
+The official API endpoint (`GET /zen/go/v1/usage`) is proposed in [PR #16513](https://github.com/anomalyco/opencode/pull/16513) but is not yet merged. The `APIQuotaFetcher` placeholder is ready once it ships.
+
+## Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| Menu bar shows `ERR` | Auth cookie may be expired — get a fresh one from your browser. |
+| Menu bar shows `?\|?\|?` | One or more quota windows not found in dashboard HTML. Open the OpenCode dashboard in a browser to verify. |
+| Menu bar shows `--` | Not configured. Open Preferences and enter credentials. |
+| "Load Saved" does nothing | No saved credentials found. Enter and Save first. |
+| Dashboard format changed | Scraper regex patterns may need updating — file an issue. |
+| All windows show 0% but dashboard disagrees | Auth cookie may be stale. Refresh from browser. |
+| Can't interact with Preferences | Make sure you're running from the `.app` bundle, not a bare binary. Use `./bundle.sh && open build/headroom.app`. |
 
 ## FAQ
 
-**Q: Is the auth cookie stored safely?**
-A: Yes. macOS Keychain, not plaintext.
+**Q: Why a config file instead of Keychain?**
+Ad-hoc signed apps trigger intrusive Keychain permission dialogs that often render behind windows. File-based storage at `~/.config/headroom/` avoids this and matches the approach used by `slkiser/opencode-quota` and `pi-go-bars`.
 
-**Q: How often does it refresh?**
-A: 60s default, configurable 15s–300s in Preferences.
+**Q: Does it auto-launch at login?**
+Not yet. You can add it manually: System Settings → General → Login Items → add `headroom.app`.
 
-**Q: What if the OpenCode dashboard changes?**
-A: The scraper shows a clear error. Update regex patterns in `DashboardScraper.swift`, or switch to the API fetcher when available.
+**Q: Can I use the API endpoint instead of scraping?**
+Not yet. Track [PR #16513](https://github.com/anomalyco/opencode/pull/16513).
+
+**Q: How do I quit if the menu bar button isn't responding?**
+```bash
+pkill -f headroom
+```
 
 ## License
 
@@ -122,4 +148,4 @@ MIT
 
 ---
 
-Built by [@PainInTheBhat](https://github.com/pain-in-the-bhat)
+Built by [@PainInTheBhat](https://github.com/pain-in-the-bhat). Not affiliated with OpenCode.
